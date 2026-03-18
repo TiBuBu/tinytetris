@@ -2,6 +2,7 @@
 #include <curses.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 // block layout is: {w-1,h-1}{x0,y0}{x1,y1}{x2,y2}{x3,y3} (two bits each)
@@ -50,7 +51,7 @@ void set_piece(int x, int y, int r, int v) {
 }
 
 // move a piece from old (p*) coords to new
-int update_piece() {
+void update_piece() {
   set_piece(px, py, pr, 0);
   set_piece(px = x, py = y, pr = r, p + 1);
 }
@@ -144,18 +145,33 @@ void runloop() {
 // init curses and start runloop
 int main() {
   srand(time(0));
-  initscr();
+  WINDOW *win = initscr();
+  if (!win) {
+    fprintf(stderr, "Failed to initialize ncurses.\n");
+    return 1;
+  }
+  if (LINES < 22 || COLS < 22) {
+    endwin();
+    fprintf(stderr, "Terminal too small: need at least 22x22, got %dx%d.\n", COLS,
+            LINES);
+    return 1;
+  }
+  if (!has_colors()) {
+    endwin();
+    fprintf(stderr, "Terminal does not support colors required by this game.\n");
+    return 1;
+  }
   start_color();
   // colours indexed by their position in the block
   for (int i = 1; i < 8; i++) {
     init_pair(i, i, 0);
   }
   new_piece();
-  resizeterm(22, 22);
   noecho();
   timeout(0);
   curs_set(0);
   box(stdscr, 0, 0);
   runloop();
   endwin();
+  return 0;
 }
